@@ -1,0 +1,16 @@
+AllCops:
+  Exclude:
+    - 'fusebox.gemspec'
+    - 'test/*.rb'
+
+Style/Documentation:
+  Enabled: false
+
+Metrics/MethodLength:
+  Enabled: false
+
+Layout/AlignParameters:
+  Enabled: false
+
+Lint/RescueException:
+  Enabled: false

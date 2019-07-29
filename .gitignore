@@ -1,0 +1,11 @@
+/.bundle/
+/.yardoc
+/_yardoc/
+/coverage/
+/doc/
+/pkg/
+/tmp/
+/test/dummy/log/
+/test/dummy/db/*.sqlite3
+/test/dummy/db/schema.rb
+test/dummy/db/migrate/

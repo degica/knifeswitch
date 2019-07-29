@@ -1,0 +1,9 @@
+#!/bin/bash
+
+docker build . -t knifeswitch
+docker run \
+  --rm \
+  -it \
+  --mount type=bind,source="$(pwd)",target=/project \
+  --mount type=volume,source=knifeswitch_gems,target=/usr/local/bundle/ \
+  knifeswitch $*

@@ -1,5 +1,5 @@
 # Knifeswitch
-Yet another circuit breaker gem. This one strives to be as small and simple as possible. It uses MySQL (through ActiveRecord) for distributed state.
+Yet another circuit breaker gem. This one strives to be as small and simple as possible. In the effort to remain simple, it currently only supports Rails with MySQL.
 
 ## Usage
 ```ruby
@@ -13,7 +13,11 @@ circuit = Knifeswitch::Circuit.new(
 
 response = circuit.run { client.request(...) }
 # 'run' will raise Knifeswitch::CircuitOpen if its error_threshold has
-# been exceeded. That is: when a timeout has occurred 5 times in a row.
+# been exceeded. In this case: when a timeout occurs 5 times in a row.
+# 
+# The error threshold counter is shared among all Knifeswitch::Circuit
+# instances with the same namespace. The counters are stored in the db,
+# so the state is fully distributed among all your workers/webservers.
 #
 # After the circuit opens, it will close back down after 60 seconds of
 # rejecting requests (by raising Knifeswitch::CircuitOpen).

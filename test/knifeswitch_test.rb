@@ -118,4 +118,33 @@ class Knifeswitch::Test < ActiveSupport::TestCase
     raise_error circuit, UnwatchedError
     assert_equal circuit.counter, 0
   end
+
+  test "Callback is called on timeout" do
+    callback_results = []
+    options = simple_opts.merge(
+      error_threshold: 3,
+      callback: -> err { callback_results << err.class }
+    )
+    circuit = Knifeswitch::Circuit.new options
+
+    raise_error circuit
+
+    assert_equal callback_results, [TestError]
+  end
+
+  test "Callback is called on circuit-open" do
+    callback_results = []
+    options = simple_opts.merge(
+      error_threshold: 1,
+      callback: -> err { callback_results << err.class }
+    )
+    circuit = Knifeswitch::Circuit.new options
+
+    raise_error circuit
+    assert_raise Knifeswitch::CircuitOpen, "Should raise CircuitOpen when open" do
+      circuit.run { raise TestError, "Should NOT be raised" }
+    end
+
+    assert_equal callback_results, [TestError, Knifeswitch::CircuitOpen]
+  end
 end

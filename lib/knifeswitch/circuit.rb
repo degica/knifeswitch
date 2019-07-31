@@ -22,6 +22,7 @@ module Knifeswitch
   #
   class Circuit
     attr_reader :namespace, :exceptions, :error_threshold, :error_timeout
+    attr_accessor :callback
 
     # Options:
     #
@@ -33,12 +34,14 @@ module Knifeswitch
       namespace: 'default',
       exceptions: [Timeout::Error],
       error_threshold: 10,
-      error_timeout: 60
+      error_timeout: 60,
+      callback: nil
     )
       @namespace       = namespace
       @exceptions      = exceptions
       @error_threshold = error_threshold
       @error_timeout   = error_timeout
+      @callback        = callback
     end
 
     # Call this with a block to execute the contents of the block under
@@ -46,7 +49,10 @@ module Knifeswitch
     #
     # Raises Knifeswitch::CircuitOpen when called while the circuit is open.
     def run
-      raise CircuitOpen if open?
+      if open?
+        callback.try(:call, CircuitOpen.new)
+        raise CircuitOpen
+      end
 
       result = yield
       reset_counter!
@@ -54,6 +60,7 @@ module Knifeswitch
     rescue Exception => error
       if exceptions.any? { |watched| error.is_a?(watched) }
         increment_counter!
+        callback.try(:call, error)
       else
         reset_counter!
       end

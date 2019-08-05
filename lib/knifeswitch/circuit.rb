@@ -24,6 +24,14 @@ module Knifeswitch
     attr_reader :namespace, :exceptions, :error_threshold, :error_timeout
     attr_accessor :callback
 
+    # Knifeswitch keeps its own Mysql2 client in order to keep its
+    # state from being rolled back during ActiveRecord transactions.
+    def self.mysql_client
+      Thread.current[:knifeswitch_mysql] ||= Mysql2::Client.new(
+        Rails.configuration.database_configuration[Rails.env]
+      )
+    end
+
     # Options:
     #
     # namespace:       circuits in the same namespace share state
@@ -74,29 +82,32 @@ module Knifeswitch
     # When the circuit is open, calls to `run` will raise CircuitOpen
     # instead of yielding.
     def open?
-      result = sql(:select_value, %(
+      result = sql(%(
         SELECT COUNT(*) c FROM knifeswitch_counters
         WHERE name = ? AND closetime > ?
       ), namespace, DateTime.now)
 
-      result > 0
+      result.first['c'] > 0
     end
 
     # Retrieves the current counter value.
     def counter
-      result = sql(:select_value, %(
+      result = sql(%(
         SELECT counter FROM knifeswitch_counters
         WHERE name = ?
       ), namespace)
 
-      result || 0
+      result.each do |row|
+        return row['counter']
+      end
+      0
     end
 
     # Increments counter and opens the circuit if it went
     # too high
     def increment_counter!
       # Increment the counter
-      sql(:execute, %(
+      sql(%(
         INSERT INTO knifeswitch_counters (name,counter)
         VALUES (?, 1)
         ON DUPLICATE KEY UPDATE counter=counter+1
@@ -104,7 +115,6 @@ module Knifeswitch
 
       # Possibly open the circuit
       sql(
-        :execute,
         %(
           UPDATE knifeswitch_counters
           SET closetime = ?
@@ -117,7 +127,7 @@ module Knifeswitch
 
     # Sets the counter to zero
     def reset_counter!
-      sql(:execute, %(
+      sql(%(
         INSERT INTO knifeswitch_counters (name,counter)
         VALUES (?, 0)
         ON DUPLICATE KEY UPDATE counter=0
@@ -126,14 +136,15 @@ module Knifeswitch
 
     private
 
+    def mysql_client
+      self.class.mysql_client
+    end
+
     # Executes a SQL query with the given Connection method
     # (i.e. :execute, or :select_values)
-    def sql(method, query, *args)
+    def sql(query, *args)
       query = ActiveRecord::Base.send(:sanitize_sql_array, [query] + args)
-
-      ActiveRecord::Base.connection_pool.with_connection do |conn|
-        conn.send(method, query)
-      end
+      mysql_client.query(query)
     end
   end
 end

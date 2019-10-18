@@ -1,4 +1,7 @@
 # Knifeswitch
+
+![knifeswitch](https://user-images.githubusercontent.com/2793160/67077729-c908dd80-f1ca-11e9-96c7-5b1c8b792254.jpg)
+
 Yet another circuit breaker gem. This one strives to be as small and simple as possible. In the effort to remain simple, it currently only supports Rails with MySQL.
 
 ## Usage

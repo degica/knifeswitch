@@ -49,23 +49,28 @@ module Knifeswitch
     #
     # Raises Knifeswitch::CircuitOpen when called while the circuit is open.
     def run
-      if open?
-        callback.try(:call, CircuitOpen.new)
-        raise CircuitOpen
-      end
+      with_connection do |conn|
+        if open?
+          callback.try(:call, CircuitOpen.new)
+          raise CircuitOpen
+        end
 
-      result = yield
-      reset_counter!
-      result
-    rescue Exception => error
-      if exceptions.any? { |watched| error.is_a?(watched) }
-        increment_counter!
-        callback.try(:call, error)
-      else
+        begin
+          result = yield
+        rescue Exception => error
+          if exceptions.any? { |watched| error.is_a?(watched) }
+            increment_counter!
+            callback.try(:call, error)
+          else
+            reset_counter!
+          end
+
+          raise error
+        end
+
         reset_counter!
+        result
       end
-
-      raise error
     end
 
     # Queries the database to see if the circuit is open.
@@ -130,9 +135,21 @@ module Knifeswitch
     # (i.e. :execute, or :select_values)
     def sql(method, query, *args)
       query = ActiveRecord::Base.send(:sanitize_sql_array, [query] + args)
-
-      ActiveRecord::Base.connection_pool.with_connection do |conn|
+      with_connection do |conn|
         conn.send(method, query)
+      end
+    end
+
+    def with_connection
+      if @conn
+        yield(@conn)
+      else
+        ActiveRecord::Base.connection_pool.with_connection do |conn|
+          @conn = conn
+          yield(conn)
+        ensure
+          @conn = nil
+        end
       end
     end
   end

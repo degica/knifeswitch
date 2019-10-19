@@ -71,6 +71,16 @@ module Knifeswitch
         reset_counter!
         result
       end
+    ensure
+      reset_record
+    end
+
+    def closetime
+      record&.dig("closetime")
+    end
+
+    def counter
+      record&.dig("counter") || 0
     end
 
     # Queries the database to see if the circuit is open.
@@ -79,22 +89,7 @@ module Knifeswitch
     # When the circuit is open, calls to `run` will raise CircuitOpen
     # instead of yielding.
     def open?
-      result = sql(:select_value, %(
-        SELECT COUNT(*) c FROM knifeswitch_counters
-        WHERE name = ? AND closetime > ?
-      ), namespace, DateTime.now)
-
-      result > 0
-    end
-
-    # Retrieves the current counter value.
-    def counter
-      result = sql(:select_value, %(
-        SELECT counter FROM knifeswitch_counters
-        WHERE name = ?
-      ), namespace)
-
-      result || 0
+      return closetime && closetime > DateTime.now
     end
 
     # Increments counter and opens the circuit if it went
@@ -122,6 +117,7 @@ module Knifeswitch
 
     # Sets the counter to zero
     def reset_counter!
+      return if counter == 0
       sql(:execute, %(
         INSERT INTO knifeswitch_counters (name,counter)
         VALUES (?, 0)
@@ -130,6 +126,21 @@ module Knifeswitch
     end
 
     private
+
+    def load_record
+      sql(:select_one, %(
+        SELECT counter, closetime FROM knifeswitch_counters
+        WHERE name = ?
+      ), @namespace)
+    end
+
+    def reset_record
+      @record = nil
+    end
+
+    def record
+      @record ||= load_record
+    end
 
     # Executes a SQL query with the given Connection method
     # (i.e. :execute, or :select_values)

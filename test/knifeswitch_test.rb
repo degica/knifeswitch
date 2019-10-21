@@ -1,6 +1,8 @@
 require 'test_helper'
 
 class Knifeswitch::Test < ActiveSupport::TestCase
+  self.use_transactional_tests = false
+
   class TestError < StandardError
   end
   class UnwatchedError < StandardError
@@ -17,6 +19,10 @@ class Knifeswitch::Test < ActiveSupport::TestCase
     error_threshold: 1,
     error_timeout: 1
   }
+
+  setup do
+    ActiveRecord::Base.connection.execute("DELETE FROM knifeswitch_counters")
+  end
 
   test 'Circuit opens and closes' do
     circuit = Knifeswitch::Circuit.new simple_opts

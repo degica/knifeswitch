@@ -49,7 +49,7 @@ module Knifeswitch
     #
     # Raises Knifeswitch::CircuitOpen when called while the circuit is open.
     def run
-      with_connection do |conn|
+      with_connection do
         if open?
           callback.try(:call, CircuitOpen.new)
           raise CircuitOpen
@@ -144,10 +144,11 @@ module Knifeswitch
       if @conn
         yield(@conn)
       else
-        ActiveRecord::Base.connection_pool.with_connection do |conn|
-          @conn = conn
-          yield(conn)
+        begin
+          @conn = ActiveRecord::Base.connection_pool.checkout
+          yield(@conn)
         ensure
+          ActiveRecord::Base.connection_pool.checkin(@conn)
           @conn = nil
         end
       end

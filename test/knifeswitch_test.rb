@@ -1,6 +1,8 @@
 require 'test_helper'
 
 class Knifeswitch::Test < ActiveSupport::TestCase
+  self.use_transactional_tests = false
+
   class TestError < StandardError
   end
   class UnwatchedError < StandardError
@@ -17,6 +19,10 @@ class Knifeswitch::Test < ActiveSupport::TestCase
     error_threshold: 1,
     error_timeout: 1
   }
+
+  setup do
+    ActiveRecord::Base.connection.execute("DELETE FROM knifeswitch_counters")
+  end
 
   test 'Circuit opens and closes' do
     circuit = Knifeswitch::Circuit.new simple_opts
@@ -146,5 +152,19 @@ class Knifeswitch::Test < ActiveSupport::TestCase
     end
 
     assert_equal callback_results, [TestError, Knifeswitch::CircuitOpen]
+  end
+
+  test "An ActiveRecord transaction does not rollback Knifeswitch changes" do
+    circuit = Knifeswitch::Circuit.new simple_opts.merge(error_threshold: 2)
+    assert_equal 0, circuit.counter
+
+    assert_raise TestError do
+      ActiveRecord::Base.transaction do
+        raise_error circuit # Increment counter
+        raise TestError     # Cause rollback
+      end
+    end
+
+    assert_equal 1, circuit.counter
   end
 end

@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    knifeswitch (1.1.1)
+    knifeswitch (1.2.0)
       rails (~> 5.2.2, >= 5.2.2.1)
 
 GEM

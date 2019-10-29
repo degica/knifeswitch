@@ -167,4 +167,19 @@ class Knifeswitch::Test < ActiveSupport::TestCase
 
     assert_equal 1, circuit.counter
   end
+
+  test "ENV['KNIFESWITCH']=OFF turns off all checks" do
+    circuit = Knifeswitch::Circuit.new simple_opts
+    ENV['KNIFESWITCH'] = 'OfF' # Should be case insensitive
+
+    raise_error circuit
+    assert !circuit.open?, "Circuit should be closed while ENV['KNIFESWITCH'] = 'OFF'"
+    raise_error circuit
+    assert !circuit.open?, "Circuit should be closed while ENV['KNIFESWITCH'] = 'OFF'"
+
+    ENV['KNIFESWITCH'] = nil # Should re-activate
+
+    raise_error circuit
+    assert circuit.open?, "Circuit should open up once ENV['KNIFESWITCH'] is no longer 'OFF'"
+  end
 end

@@ -30,6 +30,7 @@ module Knifeswitch
     # exceptions:      an array of error types that bump the counter
     # error_threshold: number of errors required to open the circuit
     # error_timeout:   seconds to keep the circuit open
+    # callback:        proc to be called when watched errors raise
     def initialize(
       namespace: 'default',
       exceptions: [Timeout::Error],
@@ -47,11 +48,15 @@ module Knifeswitch
     # Call this with a block to execute the contents of the block under
     # circuit breaker protection.
     #
+    # When ENV['KNIFESWITCH'] == 'OFF', this method always just yields.
+    #
     # Raises Knifeswitch::CircuitOpen when called while the circuit is open.
     def run
+      return yield if turned_off?
+
       with_connection do
         if open?
-          callback.try(:call, CircuitOpen.new)
+          callback&.call CircuitOpen.new
           raise CircuitOpen
         end
 
@@ -60,7 +65,7 @@ module Knifeswitch
         rescue Exception => error
           if exceptions.any? { |watched| error.is_a?(watched) }
             increment_counter!
-            callback.try(:call, error)
+            callback&.call error
           else
             reset_counter!
           end
@@ -127,7 +132,13 @@ module Knifeswitch
 
     private
 
+    # If this is true, knifeswitch should not do anything
+    def turned_off?
+      ENV['KNIFESWITCH']&.downcase == 'off'
+    end
+
     def load_record
+      return nil if turned_off?
       sql(:select_one, %(
         SELECT counter, closetime FROM knifeswitch_counters
         WHERE name = ?

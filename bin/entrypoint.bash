@@ -6,9 +6,9 @@ gem install bundler
 
 if [ "$1" == "" ]; then
   bundle install
-  (cd test/dummy && rm db/migrate/*)
-  (cd test/dummy && rake knifeswitch:create_migrations)
-  (cd test/dummy && rake db:create db:migrate)
+  (cd test/dummy && rm -f db/migrate/*)
+  (cd test/dummy && bundle exec rake knifeswitch:create_migrations)
+  (cd test/dummy && bundle exec rake db:create db:migrate)
   bin/test
 else
   $*

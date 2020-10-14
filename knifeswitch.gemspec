@@ -18,7 +18,7 @@ https://martinfowler.com/bliki/CircuitBreaker.html}
 
   spec.files = Dir["{app,config,db,lib}/**/*", "MIT-LICENSE", "Rakefile", "README.md"]
 
-  spec.add_dependency "rails", "~> 5.2.2", ">= 5.2.2.1"
+  spec.add_dependency "rails", ">= 5.2", "< 6.1"
 
   spec.add_development_dependency "mysql2"
 end

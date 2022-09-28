@@ -170,7 +170,8 @@ module Knifeswitch
           @conn = ActiveRecord::Base.connection_pool.checkout
           yield(@conn)
         ensure
-          ActiveRecord::Base.connection_pool.checkin(@conn)
+          # @conn can be nil if ActiveRecord::Base.connection_pool.checkout fails due to ActiveRecord::ConnectionTimeoutError
+          ActiveRecord::Base.connection_pool.checkin(@conn) if @conn
           @conn = nil
         end
       end
